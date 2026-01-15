@@ -720,30 +720,36 @@
         }
 
         function addStars() {
-            const amount = prompt('Сколько звёзд добавить? (1-1000)');
-            
-            if (amount && !isNaN(amount) && amount > 0 && amount <= 1000) {
-                fetch(`/api/add-stars/${userId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ amount: parseInt(amount) })
-                })
-                .then(response => response.json())
-                .then(result => {
-                    if (result.success) {
-                        userData.stars = result.newBalance;
-                        updateUI();
-                        tg.showAlert(`✅ Добавлено ${amount} звёзд!`);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error adding stars:', error);
-                    alert('Ошибка при пополнении');
-                });
-            }
+            // Показываем меню пополнения через бота
+            tg.showPopup({
+                title: "💰 Пополнение баланса",
+                message: "Для пополнения баланса используйте кнопку '💰 Пополнить баланс' в боте",
+                buttons: [
+                    {id: "bot", text: "Открыть бота"},
+                    {id: "cancel", text: "Отмена"}
+                ]
+            }, function(button_id) {
+                if (button_id === "bot") {
+                    tg.openTelegramLink(`https://t.me/${tg.initDataUnsafe.user.username || 'your_bot'}`);
+                }
+            });
         }
+
+        // Периодическая синхронизация баланса с сервером
+        setInterval(async () => {
+            try {
+                const response = await fetch(`/api/user/${userId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.stars !== userData.stars) {
+                        userData.stars = data.stars;
+                        updateUI();
+                    }
+                }
+            } catch (error) {
+                console.error('Sync error:', error);
+            }
+        }, 5000); // Синхронизация каждые 5 секунд
 
         // Запуск приложения
         loadUserData();
