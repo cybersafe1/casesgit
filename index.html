@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎰 NFT Кейс Бот</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            min-height: 100vh;
+            color: white;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.2"/><circle cx="20" cy="60" r="0.5" fill="white" opacity="0.2"/><circle cx="80" cy="40" r="0.5" fill="white" opacity="0.2"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            animation: fadeInDown 0.8s ease;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.4);
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .balance {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(20px);
+            padding: 20px;
+            border-radius: 20px;
+            text-align: center;
+            margin-bottom: 25px;
+            border: 2px solid rgba(255,255,255,0.3);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        .balance-amount {
+            font-size: 36px;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .wheel-section {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 25px;
+            border: 2px solid rgba(255,215,0,0.3);
+            text-align: center;
+        }
+
+        .wheel-container {
+            position: relative;
+            width: 250px;
+            height: 250px;
+            margin: 20px auto;
+        }
+
+        .wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+            border: 5px solid #ffd700;
+            box-shadow: 0 0 20px rgba(255,215,0,0.5);
+            transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+        }
+
+        .wheel-segment {
+            position: absolute;
+            width: 50%;
+            height: 50%;
+            transform-origin: right bottom;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .wheel-segment:nth-child(1) { transform: rotate(0deg); background: #ff6b6b; }
+        .wheel-segment:nth-child(2) { transform: rotate(45deg); background: #4ecdc4; }
+        .wheel-segment:nth-child(3) { transform: rotate(90deg); background: #45b7d1; }
+        .wheel-segment:nth-child(4) { transform: rotate(135deg); background: #96ceb4; }
+        .wheel-segment:nth-child(5) { transform: rotate(180deg); background: #ffeaa7; }
+        .wheel-segment:nth-child(6) { transform: rotate(225deg); background: #dfe6e9; }
+        .wheel-segment:nth-child(7) { transform: rotate(270deg); background: #a29bfe; }
+        .wheel-segment:nth-child(8) { transform: rotate(315deg); background: #fd79a8; }
+
+        .wheel-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle, #ffd700, #ffed4e);
+            border-radius: 50%;
+            border: 3px solid white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #333;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 10;
+        }
+
+        .wheel-pointer {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 40px solid #ffd700;
+            z-index: 11;
+        }
+
+        .spin-btn {
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #333;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255,215,0,0.4);
+        }
+
+        .spin-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255,215,0,0.6);
+        }
+
+        .spin-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .cases-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .case-card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            border: 2px solid rgba(255,255,255,0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            animation: fadeInUp 0.8s ease;
+        }
+
+        .case-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            transform: rotate(45deg);
+            transition: all 0.5s ease;
+        }
+
+        .case-card:hover::before {
+            animation: shine 0.5s ease;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+
+        .case-card:hover {
+            transform: translateY(-8px) scale(1.05);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+        }
+
+        .case-card.basic {
+            border-color: #4CAF50;
+            background: linear-gradient(135deg, rgba(76,175,80,0.2), rgba(76,175,80,0.1));
+        }
+
+        .case-card.rare {
+            border-color: #2196F3;
+            background: linear-gradient(135deg, rgba(33,150,243,0.2), rgba(33,150,243,0.1));
+        }
+
+        .case-card.epic {
+            border-color: #9C27B0;
+            background: linear-gradient(135deg, rgba(156,39,176,0.2), rgba(156,39,176,0.1));
+        }
+
+        .case-icon {
+            font-size: 56px;
+            margin-bottom: 15px;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .case-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .case-cost {
+            font-size: 16px;
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .add-stars-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #333;
+            border: none;
+            border-radius: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+            box-shadow: 0 6px 20px rgba(255,215,0,0.4);
+        }
+
+        .add-stars-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255,215,0,0.6);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px;
+            border-radius: 25px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            border: 3px solid rgba(255,255,255,0.3);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            animation: modalSlideIn 0.5s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .prize-display {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: prizeBounce 1s infinite;
+        }
+
+        @keyframes prizeBounce {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-20px) scale(1.1); }
+        }
+
+        .prize-name {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .prize-rarity {
+            font-size: 18px;
+            padding: 8px 20px;
+            border-radius: 25px;
+            margin-bottom: 25px;
+            display: inline-block;
+            font-weight: bold;
+        }
+
+        .rarity-common { background: linear-gradient(45deg, #4CAF50, #8BC34A); }
+        .rarity-rare { background: linear-gradient(45deg, #2196F3, #03A9F4); }
+        .rarity-epic { background: linear-gradient(45deg, #9C27B0, #E91E63); }
+        .rarity-legendary { background: linear-gradient(45deg, #FF9800, #FF5722); }
+
+        .close-modal {
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.3);
+            color: white;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .close-modal:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+
+        .history {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            padding: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+
+        .history h3 {
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 20px;
+        }
+
+        .history-item {
+            background: rgba(255,255,255,0.1);
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .history-item:hover {
+            background: rgba(255,255,255,0.15);
+            transform: translateX(5px);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid #ffd700;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .nft-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: linear-gradient(45deg, #ff6b6b, #ff8e53);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .free-spin-timer {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #ffd700;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎰 NFT Кейс Бот</h1>
+            <p>Выигрывай NFT и Telegram подарки!</p>
+        </div>
+
+        <div class="balance">
+            <div class="balance-amount">⭐ <span id="balance">0</span></div>
+            <div>Ваш баланс</div>
+        </div>
+
+        <div class="wheel-section">
+            <h3>🎯 Бесплатное колесо удачи</h3>
+            <div class="wheel-container">
+                <div class="wheel-pointer"></div>
+                <div class="wheel" id="wheel">
+                    <div class="wheel-segment">⭐ 10</div>
+                    <div class="wheel-segment">🎁 25</div>
+                    <div class="wheel-segment">💎 50</div>
+                    <div class="wheel-segment">🪙 5</div>
+                    <div class="wheel-segment">⭐ 15</div>
+                    <div class="wheel-segment">🎁 30</div>
+                    <div class="wheel-segment">💎 75</div>
+                    <div class="wheel-segment">🪙 10</div>
+                </div>
+                <div class="wheel-center" onclick="spinWheel()">SPIN</div>
+            </div>
+            <button class="spin-btn" id="spinBtn" onclick="spinWheel()">Крутить колесо</button>
+            <div class="free-spin-timer" id="spinTimer">Следующий спин через: <span id="timer">5:00</span></div>
+        </div>
+
+        <button class="add-stars-btn" onclick="addStars()">
+            💰 Пополнить звёзды
+        </button>
+
+        <div class="cases-grid">
+            <div class="case-card basic" onclick="openCase('basic')">
+                <div class="nft-badge">NFT</div>
+                <div class="case-icon">📦</div>
+                <div class="case-name">Базовый кейс</div>
+                <div class="case-cost">⭐ 10</div>
+            </div>
+
+            <div class="case-card rare" onclick="openCase('rare')">
+                <div class="nft-badge">NFT</div>
+                <div class="case-icon">🎁</div>
+                <div class="case-name">Редкий кейс</div>
+                <div class="case-cost">⭐ 25</div>
+            </div>
+
+            <div class="case-card epic" onclick="openCase('epic')">
+                <div class="nft-badge">NFT</div>
+                <div class="case-icon">💎</div>
+                <div class="case-name">Эпик кейс</div>
+                <div class="case-cost">⭐ 50</div>
+            </div>
+        </div>
+
+        <div class="history">
+            <h3>📜 История выигрышей</h3>
+            <div id="history-list">
+                <p style="text-align: center; opacity: 0.7;">Пока нет выигрышей</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Открываем кейс...</p>
+    </div>
+
+    <div class="modal" id="prizeModal">
+        <div class="modal-content">
+            <div class="prize-display" id="prizeIcon"></div>
+            <div class="prize-name" id="prizeName"></div>
+            <div class="prize-rarity" id="prizeRarity"></div>
+            <button class="close-modal" onclick="closeModal()">Продолжить</button>
+        </div>
+    </div>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+        let userId = null;
+        let userData = null;
+        let isSpinning = false;
+        let spinCooldown = false;
+
+        tg.ready();
+        tg.expand();
+
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            userId = tg.initDataUnsafe.user.id;
+        } else {
+            userId = 12345;
+        }
+
+        // Инициализация таймера кручения колеса
+        let spinTimeLeft = 300; // 5 минут в секундах
+        let spinTimer = null;
+
+        function updateSpinTimer() {
+            const minutes = Math.floor(spinTimeLeft / 60);
+            const seconds = spinTimeLeft % 60;
+            document.getElementById('timer').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            if (spinTimeLeft > 0) {
+                spinTimeLeft--;
+                spinCooldown = true;
+                document.getElementById('spinBtn').disabled = true;
+            } else {
+                spinCooldown = false;
+                document.getElementById('spinBtn').disabled = false;
+                clearInterval(spinTimer);
+            }
+        }
+
+        function startSpinTimer() {
+            spinTimeLeft = 300;
+            spinTimer = setInterval(updateSpinTimer, 1000);
+            updateSpinTimer();
+        }
+
+        async function loadUserData() {
+            try {
+                const response = await fetch(`/api/user/${userId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    userData = data;
+                    updateUI();
+                }
+            } catch (error) {
+                console.error('Error loading user data:', error);
+            }
+        }
+
+        function updateUI() {
+            if (userData) {
+                document.getElementById('balance').textContent = userData.stars;
+                updateHistory();
+            }
+        }
+
+        function updateHistory() {
+            const historyList = document.getElementById('history-list');
+            
+            if (userData.winnings && userData.winnings.length > 0) {
+                const recentWins = userData.winnings.slice(-5).reverse();
+                historyList.innerHTML = recentWins.map(item => `
+                    <div class="history-item">
+                        <span>${item.prize.name}</span>
+                        <span style="opacity: 0.7; font-size: 12px;">
+                            ${new Date(item.timestamp).toLocaleTimeString()}
+                        </span>
+                    </div>
+                `).join('');
+            } else {
+                historyList.innerHTML = '<p style="text-align: center; opacity: 0.7;">Пока нет выигрышей</p>';
+            }
+        }
+
+        function spinWheel() {
+            if (isSpinning || spinCooldown) return;
+            
+            isSpinning = true;
+            const wheel = document.getElementById('wheel');
+            const spinBtn = document.getElementById('spinBtn');
+            
+            spinBtn.disabled = true;
+            
+            // Вычисляем выигрыш
+            const prizes = [10, 25, 50, 5, 15, 30, 75, 10];
+            const winIndex = Math.floor(Math.random() * prizes.length);
+            const winAmount = prizes[winIndex];
+            
+            // Вычисляем угол вращения
+            const segmentAngle = 360 / prizes.length;
+            const targetAngle = winIndex * segmentAngle;
+            const spins = 5; // количество полных оборотов
+            const finalAngle = spins * 360 + (360 - targetAngle);
+            
+            wheel.style.transform = `rotate(${finalAngle}deg)`;
+            
+            setTimeout(() => {
+                // Обновляем баланс
+                userData.stars += winAmount;
+                updateUI();
+                
+                // Показываем выигрыш
+                showPrize({
+                    name: `⭐ ${winAmount} звёзд`,
+                    rarity: winAmount >= 50 ? 'epic' : winAmount >= 25 ? 'rare' : 'common'
+                });
+                
+                isSpinning = false;
+                startSpinTimer(); // запускаем таймер кулдауна
+            }, 4000);
+        }
+
+        async function openCase(caseType) {
+            const loading = document.getElementById('loading');
+            loading.style.display = 'block';
+
+            try {
+                const response = await fetch(`/api/open-case/${userId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ caseType })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    userData.stars = result.newBalance;
+                    userData.winnings.push({
+                        prize: result.prize,
+                        timestamp: new Date().toISOString(),
+                        caseType
+                    });
+
+                    showPrize(result.prize);
+                    updateUI();
+                } else {
+                    alert(result.error || 'Ошибка при открытии кейса');
+                }
+            } catch (error) {
+                console.error('Error opening case:', error);
+                alert('Ошибка соединения');
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        function showPrize(prize) {
+            document.getElementById('prizeIcon').textContent = prize.name.split(' ')[0];
+            document.getElementById('prizeName').textContent = prize.name;
+            
+            const rarityElement = document.getElementById('prizeRarity');
+            rarityElement.textContent = prize.rarity.toUpperCase();
+            rarityElement.className = `prize-rarity rarity-${prize.rarity}`;
+
+            document.getElementById('prizeModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('prizeModal').style.display = 'none';
+        }
+
+        function addStars() {
+            const amount = prompt('Сколько звёзд добавить? (1-1000)');
+            
+            if (amount && !isNaN(amount) && amount > 0 && amount <= 1000) {
+                fetch(`/api/add-stars/${userId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ amount: parseInt(amount) })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        userData.stars = result.newBalance;
+                        updateUI();
+                        tg.showAlert(`✅ Добавлено ${amount} звёзд!`);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error adding stars:', error);
+                    alert('Ошибка при пополнении');
+                });
+            }
+        }
+
+        // Запуск приложения
+        loadUserData();
+        startSpinTimer(); // запускаем таймер при загрузке
+    </script>
+</body>
+</html>
